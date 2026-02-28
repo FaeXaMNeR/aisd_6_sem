@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <cstdio>
 
@@ -87,31 +88,42 @@ public:
 };
 
 // Ctrl + D для корректного завершения
-int main() {
+int main(int argc, char* argv[]) {
     Browser browser;
-    
     browser.printCurrent();
     std::cout << "\n";
+
+    std::ifstream inFile;
+    if (argc > 1) {
+        inFile.open(argv[1]);
+        if (!inFile) {
+            std::cerr << "Error: cannot open file " << argv[1] << std::endl;
+            return 1;
+        }
+    }
+    std::istream& input = (argc > 1) ? inFile : std::cin;
 
     char command[20];
     char url[BUFFER_SIZE];
     int steps;
 
-    while (std::cin >> command) {
+    while (input >> command) {
         if (strcmp(command, "visit") == 0) {
-            std::cin >> url;
+            input >> url;
             browser.visit(url);
         } else if (strcmp(command, "back") == 0) {
-            std::cin >> steps;
+            input >> steps;
             browser.back(steps);
         } else if (strcmp(command, "forward") == 0) {
-            std::cin >> steps;
+            input >> steps;
             browser.forward(steps);
         }
-        
+
         browser.printCurrent();
         std::cout << "\n";
     }
+
+    if (argc > 1) inFile.close();
 
     return 0;
 }
