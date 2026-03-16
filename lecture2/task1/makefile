@@ -13,7 +13,7 @@ BIN_DIR = bin
 
 .PHONY: all build size shuffle clean run
 
-all: build size shuffle
+all: build
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)

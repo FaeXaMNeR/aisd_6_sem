@@ -6,10 +6,82 @@
 #include <chrono>
 #include <algorithm>
 
-void improvedBubbleSort(int arr[], int n) {
-    if (n <= 1) return;
+template <typename T>
+class MyVector {
+private:
+    T* data;
+    size_t size;
+    size_t capacity;
 
-    int gap = n;
+    void grow() {
+        capacity = (capacity == 0) ? 1 : capacity * 2;
+        reallocate(capacity);
+    }
+
+    void reallocate(size_t new_cap) {
+        T* new_data = new T[new_cap];
+        for (size_t i = 0; i < size; ++i) {
+            new_data[i] = data[i];
+        }
+
+        delete[] data;
+        data = new_data;
+        capacity = new_cap;
+    }
+
+public:
+    MyVector() : data(nullptr), size(0), capacity(0) {}
+
+    MyVector(const MyVector& other) : data(nullptr), size(0), capacity(0) {
+        *this = other;
+    }
+
+    ~MyVector() {
+        delete[] data;
+    }
+
+    void push_back(const T& value) {
+        if (size == capacity) {
+            grow();
+        }
+
+        data[size++] = value;
+    }
+
+    
+    T* begin() {
+        return data;
+    }
+
+    T* end() {
+        return data + size;
+    }
+
+    const T* begin() const {
+        return data;
+    }
+    const T* end() const {
+        return data + size;
+    }
+
+    size_t getSize() const {
+        return size;
+    }
+
+    T& operator[](size_t idx) {
+        return data[idx];
+    }
+
+    const T& operator[](size_t idx) const {
+        return data[idx];
+    }
+};
+
+template <typename T>
+void improvedBubbleSort(MyVector<T> &vec) {
+    if (vec.getSize() <= 1) return;
+
+    int gap = static_cast<int>(vec.getSize());
     bool swapped = true;
 
     while (gap > 1 || swapped) {
@@ -19,33 +91,41 @@ void improvedBubbleSort(int arr[], int n) {
         swapped = false;
 
         // ->
-        for (int i = 0; i < n - gap; ++i) {
-            if (arr[i] > arr[i + gap]) {
-                std::swap(arr[i], arr[i + gap]);
+        for (int i = 0; i < static_cast<int>(vec.getSize()) - gap; ++i) {
+            if (vec[i] > vec[i + gap]) {
+                std::swap(vec[i], vec[i + gap]);
                 swapped = true;
             }
         }
 
         // <-
         if (swapped) {
-            for (int i = n - gap - 1; i >= 0; --i) {
-                if (arr[i] > arr[i + gap]) {
-                    std::swap(arr[i], arr[i + gap]);
+            bool reverse_swapped = false;
+
+            for (int i = static_cast<int>(vec.getSize()) - gap - 1; i >= 0; --i) {
+                if (vec[i] > vec[i + gap]) {
+                    std::swap(vec[i], vec[i + gap]);
+                    reverse_swapped = true;
                 }
             }
+
+            swapped = reverse_swapped;
         }
     }
 }
 
-void printVector(int *arr, int N) {
-    for (int i = 0; i < N; i++) {
+template <typename T>
+void printVector(MyVector<T> &arr) {
+    for (size_t i = 0; i < arr.getSize(); i++) {
         std::cout << arr[i] << " ";
     }
 
     std::cout << "\n";
 }
 
-void shuffleVector(int *arr, int N, int p) {
+template <typename T>
+void shuffleVector(MyVector<T> &arr, int p) {
+    const int N = arr.getSize();
     if (N <= 0 || p <= 0 || p > 100) return;
     
     std::random_device rd;
@@ -76,27 +156,27 @@ int main(const int argc, const char *argv[]) {
     // N = argv[1], p = argv[2]
     if (argc > 1) N = std::stoi(argv[1]);
 
-    int arr[N];
+    MyVector<int> arr;
 
     std::srand(std::time(nullptr));
 
     for (int i = 0; i < N; i++) {
-        arr[i] = rand() % 50 + 1;
+        arr.push_back(rand() % 50 + 1);
     }
 
     #if !defined(_SIZE_) && !defined(_SHUFFLE_)
     std::cout << "Vector before sorting:\n";
-    printVector(arr, N);
+    printVector(arr);
     std::cout << "\n";
 
-    improvedBubbleSort(arr, N);
+    improvedBubbleSort(arr);
     std::cout << "Vector after sorting:\n";
-    printVector(arr, N);
+    printVector(arr);
     #endif
 
     #ifdef _SIZE_
     auto start = std::chrono::high_resolution_clock::now();
-    improvedBubbleSort(arr, N);
+    improvedBubbleSort(arr);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -107,16 +187,16 @@ int main(const int argc, const char *argv[]) {
     int p = 50; // shuffle_percentage
     if (argc > 2) p = std::stoi(argv[2]);
 
-    improvedBubbleSort(arr, N);
+    improvedBubbleSort(arr);
 
-    shuffleVector(arr, N, p);
+    shuffleVector(arr, p);
 
     auto start = std::chrono::high_resolution_clock::now();
-    improvedBubbleSort(arr, N);
+    improvedBubbleSort(arr);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << duration.count() << "\n";
+    std::cout << p << " " << duration.count() << "\n";
     #endif
 
     return 0;
