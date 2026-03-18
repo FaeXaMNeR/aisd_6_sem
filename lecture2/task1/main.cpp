@@ -33,7 +33,13 @@ public:
     MyVector() : data(nullptr), size(0), capacity(0) {}
 
     MyVector(const MyVector& other) : data(nullptr), size(0), capacity(0) {
-        *this = other;
+        size = other.size;
+        capacity = other.capacity;
+        data = new T[capacity];
+
+        for (size_t i = 0; i < size; ++i) {
+            data[i] = other.data[i];
+        }
     }
 
     ~MyVector() {
@@ -75,41 +81,103 @@ public:
     const T& operator[](size_t idx) const {
         return data[idx];
     }
+
+    T& operator=(const MyVector& other) {
+        if (this != &other) {
+            delete[] data;
+            size = other.size;
+            capacity = other.capacity;
+            data = new T[capacity];
+
+            for (size_t i = 0; i < size; ++i) {
+                data[i] = other.data[i];
+            }
+        }
+
+        return *this;
+    }
 };
 
-template <typename T>
-void improvedBubbleSort(MyVector<T> &vec) {
-    if (vec.getSize() <= 1) return;
+// 1. Классическая сортировка пузырьком
+void bubbleSort(MyVector<int> &arr) {
+    int n = arr.getSize();
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                std::swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}
 
-    int gap = static_cast<int>(vec.getSize());
-    bool swapped = true;
-
-    while (gap > 1 || swapped) {
-        gap = (gap * 10) / 13;
-        if (gap < 1) gap = 1;
-
-        swapped = false;
-
-        // ->
-        for (int i = 0; i < static_cast<int>(vec.getSize()) - gap; ++i) {
-            if (vec[i] > vec[i + gap]) {
-                std::swap(vec[i], vec[i + gap]);
+// 2. Сортировка пузырьком (проверка на отсортированность)
+void improvedBubbleSort(MyVector<int>& arr) {
+    int n = arr.getSize();
+    for (int i = 0; i < n - 1; i++) {
+        bool swapped = false;
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                std::swap(arr[j], arr[j + 1]);
                 swapped = true;
             }
         }
 
-        // <-
-        if (swapped) {
-            bool reverse_swapped = false;
+        if (!swapped) break;
+    }
+}
 
-            for (int i = static_cast<int>(vec.getSize()) - gap - 1; i >= 0; --i) {
-                if (vec[i] > vec[i + gap]) {
-                    std::swap(vec[i], vec[i + gap]);
-                    reverse_swapped = true;
-                }
+// 3. Шейкерная сортировка
+void cocktailShakerSort(MyVector<int>& arr) {
+    int n = arr.getSize();
+    int start = 0;
+    int end = n - 1;
+    bool swapped = true;
+
+    while (swapped) {
+        swapped = false;
+
+        // ->
+        for (int i = start; i < end; ++i) {
+            if (arr[i] > arr[i + 1]) {
+                std::swap(arr[i], arr[i + 1]);
+                swapped = true;
             }
+        }
 
-            swapped = reverse_swapped;
+        if (!swapped) break;
+
+        swapped = false;
+        end--;
+
+        // <-
+        for (int i = end; i > start; --i) {
+            if (arr[i] < arr[i - 1]) {
+                std::swap(arr[i], arr[i - 1]);
+                swapped = true;
+            }
+        }
+        start++;
+    }
+}
+
+// 4. Сортировка расчёской
+void combSort(MyVector<int>& arr) {
+    int n = arr.getSize();
+    int gap = n;
+    const double shrink = 1.3;
+    bool swapped = true;
+
+    while (gap > 1 || swapped) {
+        gap = std::floor(gap / shrink);
+        if (gap < 1) gap = 1;
+
+        swapped = false;
+
+        for (int i = 0; i + gap < n; ++i) {
+            if (arr[i] > arr[i + gap]) {
+                std::swap(arr[i], arr[i + gap]);
+                swapped = true;
+            }
         }
     }
 }
@@ -150,21 +218,82 @@ void shuffleVector(MyVector<T> &arr, int p) {
     delete[] index;
 }
 
-int main(const int argc, const char *argv[]) {
-    int N = 10;
-
-    // N = argv[1], p = argv[2]
-    if (argc > 1) N = std::stoi(argv[1]);
-
-    MyVector<int> arr;
-
+int main(int argc, char* argv[]) {
     std::srand(std::time(nullptr));
 
-    for (int i = 0; i < N; i++) {
-        arr.push_back(rand() % 50 + 1);
+    int N = 10;
+    
+    if (argc > 1) N = std::stoi(argv[1]);
+
+    using SortFunc = void(*)(MyVector<int>&);
+    SortFunc sorts[4] = { bubbleSort, improvedBubbleSort, cocktailShakerSort, combSort };
+
+#ifdef _SIZE_
+    std::vector<int> sizes;
+    for (int s = 10; s <= N; s *= 10) {
+        sizes.push_back(s);
     }
 
-    #if !defined(_SIZE_) && !defined(_SHUFFLE_)
+    if (sizes.empty() || sizes.back() != N) {
+        sizes.push_back(N);
+    }
+
+    for (int size : sizes) {
+        MyVector<int> base;
+        for (int i = 0; i < size; i++) {
+            base.push_back(std::rand() % 1000);
+        }
+
+        long long times[4] = {0};
+        for (int i = 0; i < 4; i++) {
+            MyVector<int> copy = base;
+            auto start = std::chrono::high_resolution_clock::now();
+            sorts[i](copy);
+            auto end = std::chrono::high_resolution_clock::now();
+            times[i] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        }
+
+        std::cout << size;
+        for (int i = 0; i < 4; i++) {
+            std::cout << " " << times[i];
+        }
+        std::cout << "\n";
+    }
+
+#elif defined(_SHUFFLE_)
+    if (N <= 0) N = 10000;
+
+    MyVector<int> sorted;
+    for (int i = 0; i < N; i++) {
+        sorted.push_back(std::rand() % 1000);
+    }
+    improvedBubbleSort(sorted);
+
+    for (int percent = 0; percent <= 100; percent += 10) {
+        MyVector<int> shuffled = sorted;
+        shuffleVector(shuffled, percent);
+
+        long long times[4] = {0};
+        for (int i = 0; i < 4; i++) {
+            MyVector<int> copy = shuffled;
+            auto start = std::chrono::high_resolution_clock::now();
+            sorts[i](copy);
+            auto end = std::chrono::high_resolution_clock::now();
+            times[i] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        }
+
+        std::cout << percent;
+        for (int i = 0; i < 4; i++) {
+            std::cout << " " << times[i];
+        }
+        std::cout << "\n";
+    }
+
+#else
+    MyVector<int> arr;
+    for (int i = 0; i < N; i++) {
+        arr.push_back(std::rand() % 50 + 1);
+    }
     std::cout << "Vector before sorting:\n";
     printVector(arr);
     std::cout << "\n";
@@ -172,32 +301,7 @@ int main(const int argc, const char *argv[]) {
     improvedBubbleSort(arr);
     std::cout << "Vector after sorting:\n";
     printVector(arr);
-    #endif
-
-    #ifdef _SIZE_
-    auto start = std::chrono::high_resolution_clock::now();
-    improvedBubbleSort(arr);
-    auto end = std::chrono::high_resolution_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << duration.count() << "\n";
-    #endif
-
-    #ifdef _SHUFFLE_
-    int p = 50; // shuffle_percentage
-    if (argc > 2) p = std::stoi(argv[2]);
-
-    improvedBubbleSort(arr);
-
-    shuffleVector(arr, p);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    improvedBubbleSort(arr);
-    auto end = std::chrono::high_resolution_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << p << " " << duration.count() << "\n";
-    #endif
+#endif
 
     return 0;
 }
